@@ -1,0 +1,4 @@
+https://github.com/mggg/GerryChain/archive/refs/heads/main.zip
+tqdm
+black
+isort
