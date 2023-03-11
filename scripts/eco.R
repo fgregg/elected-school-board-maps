@@ -7,6 +7,10 @@ burnin_mcmc <- 100000
 
 elec_data <- read.csv('cvap_general.csv')
 
+# The row (candidate) marginals have to equal the column (race) marginals, so
+# we need to pad out with an abstain row and other column. We then need to do
+# some additional fiddling to make all the math come out right. More fiddling than
+# is ideal, honestly.
 elec_data <- within(elec_data, {
   abstain <- (
     total -
