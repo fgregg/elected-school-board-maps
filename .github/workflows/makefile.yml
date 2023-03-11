@@ -15,7 +15,9 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: dependencies
-      run: pip install -r requirements.txt
+      run: |-
+        pip install -r requirements.txt
+        Rscript -e "install.packages('eiPack', repos='https://cran.rstudio.com/')"
 
     - name: build
       run: make
