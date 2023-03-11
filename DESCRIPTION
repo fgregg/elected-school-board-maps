@@ -1,0 +1,4 @@
+Package: schoolBoardMaps
+Version: 0.1
+Imports:
+    eiPack
