@@ -7,7 +7,7 @@ Maps for the Chicago elected school board
 - [x] create initial seed partition of 10 districts of roughly equal population
 - [ ] add VRA considerations https://mggg.org/publications/VRA-Ensembles.pdf
   - [x] assign CVAP race to precincts: https://www.census.gov/programs-surveys/decennial-census/about/voting-rights/cvap.html
-  - [ ] Ecological inference: https://github.com/mggg/VRA_ensembles/blob/master/EI_Note.pdf
+  - [x] Ecological inference: https://github.com/mggg/VRA_ensembles/blob/master/EI_Note.pdf
   - [ ] Adapt gerrychain to generate VRA comppatible districts https://github.com/mggg/VRA_ensembles
 - [ ] add roughly equal CPS population considerations
 - [ ] check if we need to add minimum number of schools
