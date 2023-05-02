@@ -28,3 +28,6 @@ municipal_general_2023.geojson :
 points_cvap_%.geojson :
 	wget -O $@ https://github.com/fgregg/chicago-dots/raw/main/points/points_cvap_$*.geojson
 
+public_school.geojson :
+	censusgeo -f "group(B14003)" -s 17 -p 14000 -v -v > $@
+
