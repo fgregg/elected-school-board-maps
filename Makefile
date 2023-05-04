@@ -1,7 +1,10 @@
 export OGR_GEOJSON_MAX_OBJ_SIZE=500MB
 
 .PHONY : all
-all : seed_partition.geojson ei_samples.csv
+all : districts.geojson
+
+districts.geojson : seed_partition.geojson
+	python scripts/generate_maps.py $< -s -e 0.7 > $@
 
 seed_partition.geojson : input.geojson
 	python scripts/seed.py $< > $@

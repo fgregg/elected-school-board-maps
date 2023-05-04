@@ -3,3 +3,4 @@ tqdm
 black
 isort
 https://github.com/datamade/census_area/archive/refs/heads/cli.zip
+click
