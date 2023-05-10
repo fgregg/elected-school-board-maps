@@ -8,12 +8,24 @@ burnin_mcmc <- 100000
 elec_data <- read.csv('cvap_general.csv')
 
 # The row (candidate) marginals have to equal the column (race) marginals, so
-# we need to pad out with an abstain row and other column. We then need to do
-# some additional fiddling to make all the math come out right. More fiddling than
-# is ideal, honestly.
+# we need to pad out with an abstain row and other column. 
+
 elec_data <- within(elec_data, {
-  abstain <- (
-    total -
+  # some of the subgroup categories overlap with hispanic
+  total_cvap <- ifelse(
+    (white_cvap +
+       black_cvap +
+       asian_cvap +
+       latino_cvap) > total_cvap,
+    white_cvap +
+      black_cvap +
+      asian_cvap +
+      latino_cvap,
+    total_cvap
+  )
+  
+  abstain_cvap <- (
+    total_cvap -
       ja_mal.green -
       sophia.king -
       kam.buckner -
@@ -24,16 +36,15 @@ elec_data <- within(elec_data, {
       roderick.t..sawyer -
       jesus..chuy..garcia
   )
-  other <- (total -
-              asian -
-              hispanic -
-              white -
-              black)
-  abstain <- ifelse(other < 0, abstain - other, abstain)
-  other <- ifelse(other < 0, 0, other)
-  excess <- ifelse(abstain < 0,-abstain, 0)
-  abstain <- ifelse(abstain < 0, 0, abstain)
+  other_cvap <- (total_cvap -
+                   asian_cvap -
+                   latino_cvap -
+                   white_cvap -
+                   black_cvap)
 })
+
+# drop a couple of rows that have negative abstensions
+elec_data <- elec_data[elec_data$abstain >= 0, ]
 
 form <- with(elec_data, {
   cbind(
@@ -46,13 +57,12 @@ form <- with(elec_data, {
     lori.e..lightfoot,
     roderick.t..sawyer,
     jesus..chuy..garcia,
-    abstain
-  ) ~ cbind(asian,
-            white,
-            black,
-            other,
-            hispanic,
-            excess)
+    abstain_cvap
+  ) ~ cbind(asian_cvap,
+            white_cvap,
+            black_cvap,
+            other_cvap,
+            latino_cvap)
 })
 
 tune.nocov <- eiPack::tuneMD(form,
