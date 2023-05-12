@@ -24,9 +24,19 @@ seed_partition = recursive_tree_part(
 
 for i, feature in enumerate(blocks["features"]):
     feature["properties"]["district"] = seed_partition[i]
-    if not feature['properties'][POP_VAR]:
-        feature['properties'][POP_VAR] = 0.0
-    if not feature['properties']['school_age_public']:
-        feature['properties']['school_age_public'] = 0.0     
+    for var in (
+        POP_VAR,
+        "school_age_public",
+        "total_cvap",
+        "black_cvap",
+        "white_cvap",
+        "asian_cvap",
+        "native_american_cvap",
+        "pacific_islander_cvap",
+        "latino_cvap",
+    ):
+        if not feature["properties"][var]:
+            feature["properties"][var] = 0.0
+
 
 json.dump(blocks, sys.stdout)

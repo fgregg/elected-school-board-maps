@@ -13,8 +13,12 @@ def max_diff(values, scaling):
 
 
 @click.command()
+@click.option("--n_epochs", type=int, default=10)
+@click.option("--n_mutations", type=int, default=10)
+@click.option("--n_seeds", type=int, default=5)
+@click.option("--n_steps", type=int, default=20)
 @click.argument("input_geojson")
-def main(input_geojson):
+def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
     graph = Graph.from_file(input_geojson, ignore_errors=True)
 
     initial_partition = GeographicPartition(
@@ -52,33 +56,44 @@ def main(input_geojson):
         initial_partition["public_school_kids"].values()
     ) / len(initial_partition)
 
-    def kid_constraint(partition):
+    def sort_key(partition):
         return max_diff(
             partition["public_school_kids"].values(), ideal_public_school_kids
-        ) < 0.5
+        )
 
-    chain = MarkovChain(
-        proposal=proposal,
-        constraints=[compactness_bound, pop_constraint, kid_constraint],
-        accept=accept.always_accept,
-        initial_state=initial_partition,
-        total_steps=1000,
-    )
+    seeds = [initial_partition]
 
-    assignments = {}
+    for epoch in tqdm.trange(n_epochs, desc="    epoch", position=0):
+        children = []
+        for seed in tqdm.tqdm(seeds, desc="     seed", leave=False, position=1):
+            for _ in tqdm.trange(
+                n_mutations, desc=" mutation", leave=False, position=2
+            ):
+                chain = MarkovChain(
+                    proposal=proposal,
+                    constraints=[compactness_bound, pop_constraint],
+                    accept=accept.always_accept,
+                    initial_state=seed,
+                    total_steps=n_steps,
+                )
 
-    for chain_id, partition in tqdm.tqdm(enumerate(chain)):
+                children.extend([partition for partition in chain])
+
+        seeds = sorted(children, key=sort_key)[:n_seeds]
+        click.echo([sort_key(partition) for partition in seeds], err=True)
+
+        best_partition = seeds[0]
         with open(input_geojson) as f:
             blocks = json.load(f)
 
         for i, feature in enumerate(blocks["features"]):
-            block_id = feature['properties']['block_id']
-            if block_id in assignments:
-                assignments[block_id][chain_id] = partition.assignment[i]
-            else:
-                assignments[block_id] = {chain_id: partition.assignment[i]}
+            feature["properties"]["district"] = best_partition.assignment[i]
 
-    click.echo(json.dumps(assignments))
+        with open(f"epoch_{epoch}.geojson", "w") as f:
+            json.dump(blocks, f)
+
+    
+
 
 if __name__ == "__main__":
     main()
