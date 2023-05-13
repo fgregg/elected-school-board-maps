@@ -12,10 +12,10 @@ seed_partition.geojson : input.geojson
 input.geojson : chicago.db
 	ogr2ogr -f GeoJSON $@ $< -sql @scripts/conform.sql
 
-chicago.db : raw/blocks_2020.geojson public_school_cvap.geojson municipal_general_2023.geojson municipal_runoff_2023.geojson raw/senate_district_map.kml
-	ogr2ogr -f SQLite -dsco SPATIALITE=YES -t_srs "EPSG:4326" $@ $<
+chicago.db : raw/blocks_2020.geojson public_school_cvap.geojson municipal_general_2023.geojson municipal_runoff_2023.geojson raw/senate_district_map.kml raw/Moderate_20-district_plan_shapefile.shp
+	ogr2ogr -makevalid -f SQLite -dsco SPATIALITE=YES -t_srs "EPSG:4326" $@ $<
 	for file in $(wordlist 2,$(words $^),$^); do \
-            ogr2ogr -f SQLite -dsco SPATIALITE=YES -append -t_srs "EPSG:4326" $@ $$file; \
+            ogr2ogr -makevalid -f SQLite -dsco SPATIALITE=YES -append -t_srs "EPSG:4326" $@ $$file; \
         done
 	echo "vacuum;" | spatialite $@
 

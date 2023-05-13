@@ -1,9 +1,10 @@
 import functools
 import json
+import random
 
 import click
 import tqdm
-from gerrychain import GeographicPartition, Graph, MarkovChain, constraints, accept
+from gerrychain import GeographicPartition, Graph, MarkovChain, accept, constraints
 from gerrychain.proposals import recom
 from gerrychain.updaters import Tally, cut_edges
 
@@ -29,6 +30,38 @@ def district_winners(partition, candidates):
     return candidate_districts
 
 
+def district_subgroup_plurality(partition):
+    subgroups = ("black_cvap", "white_cvap", "latino_cvap", "asian_cvap")
+
+    districts = {i: {"subgroup": None, "proportion": 0} for i in range(len(partition))}
+
+    for subgroup in subgroups:
+        for district, count in partition[subgroup].items():
+            proportion = count / partition["total_cvap"][district]
+            if proportion > districts[district]["proportion"]:
+                districts[district]["subgroup"] = subgroup
+                districts[district]["proportion"] = proportion
+
+    return districts
+
+
+def n_minority_pluralities(partition):
+    return sum(
+        1
+        for plurality in district_subgroup_plurality(partition).values()
+        if plurality["subgroup"] in {"black_cvap", "asian_cvap", "hispanic_cvap"}
+    )
+
+
+def n_minority_majorities(partition):
+    return sum(
+        1
+        for plurality in district_subgroup_plurality(partition).values()
+        if plurality["subgroup"] in {"black_cvap", "asian_cvap", "hispanic_cvap"}
+        and plurality["proportion"] > 0.5
+    )
+
+
 @click.command()
 @click.option("--n_epochs", type=int, default=10)
 @click.option("--n_mutations", type=int, default=10)
@@ -47,6 +80,11 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
             # "public_school_kids": Tally(
             #    "school_age_public", alias="public_school_kids"
             # ),
+            "total_cvap": Tally("total_cvap"),
+            "black_cvap": Tally("black_cvap"),
+            "latino_cvap": Tally("latino_cvap"),
+            "asian_cvap": Tally("asian_cvap"),
+            "white_cvap": Tally("white_cvap"),
             'jesus "chuy" garcia': Tally('jesus "chuy" garcia'),
             "lori e. lightfoot": Tally("lori e. lightfoot"),
             "brandon johnson": Tally("brandon johnson"),
@@ -67,10 +105,10 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
     )
 
     compactness_bound = constraints.UpperBound(
-        lambda p: len(p["cut_edges"]), 1 * len(initial_partition["cut_edges"])
+        lambda p: len(p["cut_edges"]), 8 * len(initial_partition["cut_edges"])
     )
     pop_constraint = constraints.within_percent_of_ideal_population(
-        initial_partition, 0.02
+        initial_partition, 0.03
     )
 
     # ideal_public_school_kids = sum(
@@ -89,16 +127,22 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
             "paul vallas",
             'jesus "chuy" garcia',
             "brandon johnson",
-            'lori e. lightfoot',
+            "lori e. lightfoot",
         ),
     )
 
     def minority_preferred_districts(partition):
-        return sum(
-            n_districts
-            for candidate, n_districts in winning_districts(partition).items()
-            if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
+        return (
+            sum(
+                n_districts
+                for candidate, n_districts in winning_districts(partition).items()
+                if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
+            )
+            - winning_districts(partition)["paul vallas"]
         )
+
+    def sort_key(paritition):
+        return minority_preferred_districts(partition), random.random()
 
     seeds = [initial_partition]
 
@@ -125,8 +169,15 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
             :n_seeds
         ]
         for partition in seeds:
-            winners = winning_districts(partition)
-            click.echo(winners, err=True)
+            click.echo(winning_districts(partition), err=True)
+            click.echo(
+                "Minority pluralities: {}".format(n_minority_pluralities(partition)),
+                err=True,
+            )
+            click.echo(
+                "Minority majorities: {}".format(n_minority_majorities(partition)),
+                err=True,
+            )
 
         click.echo(
             [minority_preferred_districts(partition) for partition in seeds], err=True

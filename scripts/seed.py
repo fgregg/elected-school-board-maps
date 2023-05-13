@@ -19,7 +19,7 @@ pop_per_district = (
 graph = Graph.from_file(infile, ignore_errors=True)
 
 seed_partition = recursive_tree_part(
-    graph, range(N_DISTRICTS), pop_per_district, POP_VAR, 0.01
+    graph, range(N_DISTRICTS), pop_per_district, POP_VAR, 0.02
 )
 
 for i, feature in enumerate(blocks["features"]):
@@ -35,7 +35,7 @@ for i, feature in enumerate(blocks["features"]):
         "pacific_islander_cvap",
         "latino_cvap",
     ):
-        if not feature["properties"][var]:
+        if var in feature['properties'] and not feature["properties"][var]:
             feature["properties"][var] = 0.0
 
 

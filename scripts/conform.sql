@@ -54,7 +54,6 @@ tract_pop AS (
 SELECT
     precinct_id,
     precinct_pop AS p1_001n,
-    senate_plan.ogc_fid - 1 AS district,
     "ja_mal green",
     "sophia king",
     "kam buckner",
@@ -82,15 +81,6 @@ FROM
     INNER JOIN tract_pop USING (tract_id)
     INNER JOIN public_school_cvap as tract on tract.ogc_fid = tract_id
     INNER JOIN municipal_general_2023 AS precinct ON precinct_id = precinct.ogc_fid
-    INNER JOIN "20 district draft 1" AS senate_plan ON (ST_Area (ST_Intersection (precinct.geometry, senate_plan.geometry)) / ST_Area (precinct.geometry)) > 0.5
-        AND precinct.ROWID IN (
-            SELECT
-                ROWID
-            FROM
-                SpatialIndex
-        WHERE
-            f_table_name = 'municipal_general_2023'
-            AND search_frame = senate_plan.geometry)
 GROUP BY
     precinct_id;
 
