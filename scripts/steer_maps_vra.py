@@ -132,17 +132,20 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
     )
 
     def minority_preferred_districts(partition):
-        return (
-            sum(
-                n_districts
-                for candidate, n_districts in winning_districts(partition).items()
-                if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
-            )
-            - winning_districts(partition)["paul vallas"]
+        return sum(
+            n_districts
+            for candidate, n_districts in winning_districts(partition).items()
+            if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
         )
 
-    def sort_key(paritition):
-        return minority_preferred_districts(partition), random.random()
+    def sort_key(partition):
+        min_dist = min(
+            n_districts
+            for candidate, n_districts in winning_districts(partition).items()
+            if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
+        )
+
+        return minority_preferred_districts(partition), min_dist, random.random()
 
     seeds = [initial_partition]
 
@@ -165,9 +168,7 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
 
                 children.extend([partition for partition in chain])
 
-        seeds = sorted(children, key=minority_preferred_districts, reverse=True)[
-            :n_seeds
-        ]
+        seeds = sorted(children, key=sort_key, reverse=True)[:n_seeds]
         for partition in seeds:
             click.echo(winning_districts(partition), err=True)
             click.echo(
