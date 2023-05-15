@@ -15,7 +15,7 @@ may_5_draft_plan.geojson : raw/senate_district_map.kml
 assignments.csv : assignments.json
 	cat $< | python scripts/assignment_csv.py > $@	
 
-assignments.json : seed_partition.geojson
+assignments.json : epoch_999.geojson
 	python scripts/generate_maps.py $< --n_minority_districts=10 > $@
 
 epoch_999.geojson : seed_partition.geojson
