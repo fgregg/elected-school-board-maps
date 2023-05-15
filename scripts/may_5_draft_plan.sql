@@ -44,6 +44,15 @@ btp AS (
                 f_table_name = 'blocks_2020'
                 AND search_frame = precinct.geometry)
 ),
+precinct_pop AS (
+    SELECT
+        precinct_id,
+        sum(block_precinct_pop) AS precinct_pop
+    FROM
+        btp
+    GROUP BY
+        precinct_id
+),
 block_level AS (
     SELECT
         block_id,
