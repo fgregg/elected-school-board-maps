@@ -67,8 +67,9 @@ def n_minority_majorities(partition):
 @click.option("--n_mutations", type=int, default=10)
 @click.option("--n_seeds", type=int, default=5)
 @click.option("--n_steps", type=int, default=20)
+@click.option("--steer_kids", is_flag=True, default=False)
 @click.argument("input_geojson")
-def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
+def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps, steer_kids):
     graph = Graph.from_file(input_geojson, ignore_errors=True)
 
     initial_partition = GeographicPartition(
@@ -77,9 +78,9 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
         updaters={
             "cut_edges": cut_edges,
             "population": Tally("p1_001n", alias="population"),
-            # "public_school_kids": Tally(
-            #    "school_age_public", alias="public_school_kids"
-            # ),
+            "public_school_kids": Tally(
+                "school_age_public", alias="public_school_kids"
+            ),
             "total_cvap": Tally("total_cvap"),
             "black_cvap": Tally("black_cvap"),
             "latino_cvap": Tally("latino_cvap"),
@@ -105,21 +106,15 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
     )
 
     compactness_bound = constraints.UpperBound(
-        lambda p: len(p["cut_edges"]), 8 * len(initial_partition["cut_edges"])
+        lambda p: len(p["cut_edges"]), 2 * len(initial_partition["cut_edges"])
     )
     pop_constraint = constraints.within_percent_of_ideal_population(
         initial_partition, 0.03
     )
 
-    # ideal_public_school_kids = sum(
-    #    initial_partition["public_school_kids"].values()
-    # ) / len(initial_partition)
-
-    def kid_constraint(partition):
-        return (
-            max_diff(partition["public_school_kids"].values(), ideal_public_school_kids)
-            < 0.5
-        )
+    ideal_public_school_kids = sum(
+        initial_partition["public_school_kids"].values()
+    ) / len(initial_partition)
 
     winning_districts = functools.partial(
         district_winners,
@@ -138,14 +133,23 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
             if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
         )
 
-    def sort_key(partition):
-        min_dist = min(
-            n_districts
-            for candidate, n_districts in winning_districts(partition).items()
-            if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
-        )
+    if steer_kids:
 
-        return minority_preferred_districts(partition), min_dist, random.random()
+        def sort_key(partition):
+            max_diff_kids = max_diff(
+                partition["public_school_kids"].values(), ideal_public_school_kids
+            )
+
+            return (
+                minority_preferred_districts(partition),
+                -max_diff_kids,
+                random.random(),
+            )
+
+    else:
+
+        def sort_key(partition):
+            return minority_preferred_districts(partition), random.random()
 
     seeds = [initial_partition]
 
@@ -158,7 +162,7 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
                 chain = MarkovChain(
                     proposal=proposal,
                     constraints=[
-                        compactness_bound,
+                        # compactness_bound,
                         pop_constraint,
                     ],  # , kid_constraint],
                     accept=accept.always_accept,
@@ -171,14 +175,7 @@ def main(input_geojson, n_epochs, n_mutations, n_seeds, n_steps):
         seeds = sorted(children, key=sort_key, reverse=True)[:n_seeds]
         for partition in seeds:
             click.echo(winning_districts(partition), err=True)
-            click.echo(
-                "Minority pluralities: {}".format(n_minority_pluralities(partition)),
-                err=True,
-            )
-            click.echo(
-                "Minority majorities: {}".format(n_minority_majorities(partition)),
-                err=True,
-            )
+            click.echo(sort_key(partition), err=True)
 
         click.echo(
             [minority_preferred_districts(partition) for partition in seeds], err=True

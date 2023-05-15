@@ -65,6 +65,7 @@ SELECT
 [jesus "chuy" garcia],
     "registered voters",
     "ballots cast",
+    sum(precinct_tract_pop / tract_pop) as weight,
     sum(school_age_public * (precinct_tract_pop / tract_pop)) AS school_age_public,
     sum(total_cvap * (precinct_tract_pop / tract_pop)) AS total_cvap,
     sum(white_cvap * (precinct_tract_pop / tract_pop)) AS white_cvap,
@@ -75,9 +76,8 @@ SELECT
     sum(latino_cvap * (precinct_tract_pop / tract_pop)) AS latino_cvap,
     precinct.geometry
 FROM
-    btp
+    precinct_pop
     INNER JOIN ptt USING (precinct_id)
-    INNER JOIN precinct_pop USING (precinct_id)
     INNER JOIN tract_pop USING (tract_id)
     INNER JOIN public_school_cvap as tract on tract.ogc_fid = tract_id
     INNER JOIN municipal_general_2023 AS precinct ON precinct_id = precinct.ogc_fid
