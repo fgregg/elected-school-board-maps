@@ -46,9 +46,10 @@ def district_subgroup_plurality(partition):
 
 @click.command()
 @click.argument("input_geojson")
-@click.options("--n_minority_districts", type=int)
-@click.options("--kids_variation", type=float, default=float('inf'))
-def main(input_geojson, n_minority_districts, kids_variation):
+@click.option("--n_minority_districts", type=int)
+@click.option("--kids_variation", type=float, default=float("inf"))
+@click.option("--chain_length", type=int, default=10000)
+def main(input_geojson, n_minority_districts, kids_variation, chain_length):
     graph = Graph.from_file(input_geojson, ignore_errors=True)
 
     initial_partition = GeographicPartition(
@@ -126,12 +127,12 @@ def main(input_geojson, n_minority_districts, kids_variation):
         ],
         accept=accept.always_accept,
         initial_state=initial_partition,
-        total_steps=10000,
+        total_steps=chain_length,
     )
 
     assignments = {}
 
-    for chain_id, partition in tqdm.tqdm(enumerate(chain)):
+    for chain_id, partition in tqdm.tqdm(enumerate(chain), total=chain_length):
         with open(input_geojson) as f:
             blocks = json.load(f)
 
