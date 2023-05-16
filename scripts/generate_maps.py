@@ -3,45 +3,13 @@ import json
 
 import click
 import tqdm
-from gerrychain import GeographicPartition, Graph, MarkovChain, constraints, accept
+from gerrychain import GeographicPartition, Graph, MarkovChain, accept, constraints
 from gerrychain.proposals import recom
-from gerrychain.updaters import Tally, cut_edges
+from gerrychain.updaters import Election, Tally, cut_edges
 
 
 def max_diff(values, scaling):
     return max(abs(val / scaling - 1) for val in values)
-
-
-def district_winners(partition, candidates):
-    districts = {i: {"candidate": None, "votes": 0} for i in range(len(partition))}
-
-    for candidate in candidates:
-        for district, votes in partition[candidate].items():
-            if votes > districts[district]["votes"]:
-                districts[district]["candidate"] = candidate
-                districts[district]["votes"] = votes
-
-    candidate_districts = {candidate: 0 for candidate in candidates}
-
-    for district, winner in districts.items():
-        candidate_districts[winner["candidate"]] += 1
-
-    return candidate_districts
-
-
-def district_subgroup_plurality(partition):
-    subgroups = ("black_cvap", "white_cvap", "latino_cvap", "asian_cvap")
-
-    districts = {i: {"subgroup": None, "proportion": 0} for i in range(len(partition))}
-
-    for subgroup in subgroups:
-        for district, count in partition[subgroup].items():
-            proportion = count / partition["total_cvap"][district]
-            if proportion > districts[district]["proportion"]:
-                districts[district]["subgroup"] = subgroup
-                districts[district]["proportion"] = proportion
-
-    return districts
 
 
 @click.command()
@@ -50,6 +18,16 @@ def district_subgroup_plurality(partition):
 @click.option("--kids_variation", type=float, default=float("inf"))
 @click.option("--chain_length", type=int, default=10000)
 def main(input_geojson, n_minority_districts, kids_variation, chain_length):
+    election = Election(
+        "2023 General",
+        {
+            'jesus "chuy" garcia': 'jesus "chuy" garcia',
+            "lori e. lightfoot": "lori e. lightfoot",
+            "brandon johnson": "brandon johnson",
+            "paul vallas": "paul vallas",
+        },
+    )
+
     graph = Graph.from_file(input_geojson, ignore_errors=True)
 
     initial_partition = GeographicPartition(
@@ -61,10 +39,7 @@ def main(input_geojson, n_minority_districts, kids_variation, chain_length):
             "public_school_kids": Tally(
                 "school_age_public", alias="public_school_kids"
             ),
-            'jesus "chuy" garcia': Tally('jesus "chuy" garcia'),
-            "lori e. lightfoot": Tally("lori e. lightfoot"),
-            "brandon johnson": Tally("brandon johnson"),
-            "paul vallas": Tally("paul vallas"),
+            "2023 General": election,
         },
     )
 
@@ -97,25 +72,11 @@ def main(input_geojson, n_minority_districts, kids_variation, chain_length):
             < kids_variation
         )
 
-    winning_districts = functools.partial(
-        district_winners,
-        candidates=(
-            "paul vallas",
-            'jesus "chuy" garcia',
-            "brandon johnson",
-            "lori e. lightfoot",
-        ),
-    )
-
     def minority_preferred_districts(partition):
         return (
-            sum(
-                n_districts
-                for candidate, n_districts in winning_districts(partition).items()
-                if candidate in {'jesus "chuy" garcia', "lori e. lightfoot"}
-            )
-            >= n_minority_districts
-        )
+            partition["2023 General"].wins('jesus "chuy" garcia')
+            + partition["2023 General"].wins("lori e. lightfoot")
+        ) >= n_minority_districts
 
     chain = MarkovChain(
         proposal=proposal,
@@ -131,17 +92,35 @@ def main(input_geojson, n_minority_districts, kids_variation, chain_length):
     )
 
     assignments = {}
+    kept_plans = 0
 
     for chain_id, partition in tqdm.tqdm(enumerate(chain), total=chain_length):
         with open(input_geojson) as f:
             blocks = json.load(f)
 
+        keep = False
+        minority_districts = partition["2023 General"].wins(
+            'jesus "chuy" garcia'
+        ) + partition["2023 General"].wins("lori e. lightfoot")
+        if minority_districts > n_minority_districts:
+            keep = True
+
         for i, feature in enumerate(blocks["features"]):
             block_id = feature["properties"]["precinct_id"]
+            district_assignment = partition.assignment[i]
             if block_id in assignments:
-                assignments[block_id][chain_id] = partition.assignment[i]
+                assignments[block_id][chain_id] = district_assignment
             else:
-                assignments[block_id] = {chain_id: partition.assignment[i]}
+                assignments[block_id] = {chain_id: district_assignment}
+
+            if keep:
+                feature["properties"]["district"] = district_assignment
+
+        if keep:
+            kept_plans += 1
+            with open(f"kept_{kept_plans}_{minority_districts}.geojson", "w") as f:
+                json.dump(blocks, f)
+            break
 
     click.echo(json.dumps(assignments))
 

@@ -1,6 +1,6 @@
-import sys
-import json
 import csv
+import json
+import sys
 
 assignments = json.load(sys.stdin)
 
