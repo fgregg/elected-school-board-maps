@@ -53,11 +53,9 @@ precinct_pop AS (
     GROUP BY
         precinct_id
 ),
-block_level AS (
+block_level_precinct AS (
     SELECT
         block_id,
-        p1_001n,
-        senate_plan.Name AS district_name,
         sum("ja_mal green" * (block_precinct_pop / precinct_pop)) AS "ja_mal green",
         sum("sophia king" * (block_precinct_pop / precinct_pop)) AS "sophia king",
         sum("kam buckner" * (block_precinct_pop / precinct_pop)) AS "kam buckner",
@@ -68,7 +66,17 @@ block_level AS (
         sum("roderick t. sawyer" * (block_precinct_pop / precinct_pop)) AS "roderick t. sawyer",
         sum([jesus "chuy" garcia] * (block_precinct_pop / precinct_pop)) AS[jesus "chuy" garcia],
         sum("registered voters" * (block_precinct_pop / precinct_pop)) AS "registered voters",
-        sum("ballots cast" * (block_precinct_pop / precinct_pop)) AS "ballots cast",
+        sum("ballots cast" * (block_precinct_pop / precinct_pop)) AS "ballots cast"
+    FROM
+        btp
+        INNER JOIN precinct_pop USING (precinct_id)
+        INNER JOIN municipal_general_2023 AS precinct ON precinct_id = precinct.ogc_fid
+    GROUP BY
+        block_id
+),
+block_level_tract AS (
+    SELECT
+        block_id,
         sum(school_age_public * (block_tract_pop / tract_pop)) AS school_age_public,
         sum(total_cvap * (block_tract_pop / tract_pop)) AS total_cvap,
         sum(white_cvap * (block_tract_pop / tract_pop)) AS white_cvap,
@@ -76,17 +84,23 @@ block_level AS (
         sum(native_american_cvap * (block_tract_pop / tract_pop)) AS native_american_cvap,
         sum(asian_cvap * (block_tract_pop / tract_pop)) AS asian_cvap,
         sum(pacific_islander_cvap * (block_tract_pop / tract_pop)) AS pacific_islander_cvap,
-        sum(latino_cvap * (block_tract_pop / tract_pop)) AS latino_cvap,
-        block.geometry
+        sum(latino_cvap * (block_tract_pop / tract_pop)) AS latino_cvap
     FROM
         btt
-        INNER JOIN btp USING (block_id)
         INNER JOIN tract_pop USING (tract_id)
-        INNER JOIN precinct_pop USING (precinct_id)
-        INNER JOIN municipal_general_2023 AS precinct ON precinct_id = precinct.ogc_fid
-        INNER JOIN blocks_2020 AS block ON block_id = block.ogc_fid
         INNER JOIN public_school_cvap AS tract ON tract_id = tract.ogc_fid
-        INNER JOIN "20 district draft 1" AS senate_plan ON (ST_Area (ST_Intersection (block.geometry, senate_plan.geometry)) / ST_Area (block.geometry)) > 0.5
+    GROUP BY
+        block_id
+),
+district_overlap AS (
+    SELECT
+        senate_plan.Name AS district_name,
+	p1_001n,
+        block.ogc_fid AS block_id,
+        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, senate_plan.geometry)) DESC) AS row_num
+    FROM
+        blocks_2020 as block
+        INNER JOIN "20 district draft 1" AS senate_plan ON ST_Intersects (block.geometry, senate_plan.geometry)
             AND block.ROWID IN (
                 SELECT
                     ROWID
@@ -94,10 +108,7 @@ block_level AS (
                     SpatialIndex
             WHERE
                 f_table_name = 'blocks_2020'
-                AND search_frame = senate_plan.geometry)
-        GROUP BY
-            block_id
-)
+                AND search_frame = senate_plan.geometry))
 SELECT
     district_name,
     sum(p1_001n) AS p1_001n,
@@ -105,11 +116,25 @@ SELECT
     sum("brandon johnson") AS johnson,
     sum("lori e. lightfoot") AS lightfoot,
     sum([jesus "chuy" garcia]) AS garcia,
-    sum(school_age_public) AS school_age_public
+    sum(school_age_public) AS school_age_public,
+    sum(total_cvap) AS total_cvap,
+    sum(white_cvap) / sum(total_cvap) AS percent_white_cvap,
+    sum(black_cvap) / sum(total_cvap) AS percent_black_cvap,
+    sum(latino_cvap) / sum(total_cvap) AS percent_latino_cvap
 FROM
-    block_level
+    district_overlap
+    INNER JOIN block_level_precinct USING (block_id)
+    INNER JOIN block_level_tract USING (block_id)
+WHERE
+    row_num = 1
 GROUP BY
     district_name;
+
+
+
+
+
+
 
 
 

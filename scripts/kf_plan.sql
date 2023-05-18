@@ -95,13 +95,13 @@ block_level_tract AS (
 ),
 district_overlap AS (
     SELECT
-        brottman_plan.name AS district_name,
-	p1_001n,
+        kf_plan.id AS district_name,
+        p1_001n,
         block.ogc_fid AS block_id,
-        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, brottman_plan.geometry)) DESC) AS row_num
+        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, kf_plan.geometry)) DESC) AS row_num
     FROM
-        blocks_2020 as block
-        INNER JOIN "brottman proposal [5_8_2023]" AS brottman_plan ON (ST_Area (ST_Intersection (block.geometry, brottman_plan.geometry)) / ST_Area (block.geometry)) > 0.5
+        blocks_2020 AS block
+        INNER JOIN moderate_20_district_plan_shapefile AS kf_plan ON (ST_Area (ST_Intersection (block.geometry, kf_plan.geometry)) / ST_Area (block.geometry)) > 0.5
             AND block.ROWID IN (
                 SELECT
                     ROWID
@@ -109,7 +109,7 @@ district_overlap AS (
                     SpatialIndex
             WHERE
                 f_table_name = 'blocks_2020'
-                AND search_frame = brottman_plan.geometry))
+                AND search_frame = kf_plan.geometry))
 SELECT
     district_name,
     sum(p1_001n) AS p1_001n,
@@ -130,3 +130,9 @@ WHERE
     row_num = 1
 GROUP BY
     district_name;
+
+
+
+
+
+

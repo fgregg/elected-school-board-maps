@@ -1,7 +1,6 @@
 .header on
 .mode csv
 
-
 WITH btt AS (
     SELECT
         tract.ogc_fid AS tract_id,
@@ -95,13 +94,13 @@ block_level_tract AS (
 ),
 district_overlap AS (
     SELECT
-        brottman_plan.name AS district_name,
+        senate_plan.Name AS district_name,
 	p1_001n,
         block.ogc_fid AS block_id,
-        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, brottman_plan.geometry)) DESC) AS row_num
+        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, senate_plan.geometry)) DESC) AS row_num
     FROM
         blocks_2020 as block
-        INNER JOIN "brottman proposal [5_8_2023]" AS brottman_plan ON (ST_Area (ST_Intersection (block.geometry, brottman_plan.geometry)) / ST_Area (block.geometry)) > 0.5
+        INNER JOIN "20 district map draft 5" AS senate_plan ON ST_Intersects (block.geometry, senate_plan.geometry)
             AND block.ROWID IN (
                 SELECT
                     ROWID
@@ -109,7 +108,7 @@ district_overlap AS (
                     SpatialIndex
             WHERE
                 f_table_name = 'blocks_2020'
-                AND search_frame = brottman_plan.geometry))
+                AND search_frame = senate_plan.geometry))
 SELECT
     district_name,
     sum(p1_001n) AS p1_001n,
@@ -130,3 +129,12 @@ WHERE
     row_num = 1
 GROUP BY
     district_name;
+
+
+
+
+
+
+
+
+
