@@ -100,7 +100,7 @@ district_overlap AS (
         ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, ctu.geometry)) DESC) AS row_num
     FROM
         blocks_2020 as block
-        INNER JOIN ctu ON ST_Intersects (block.geometry, ctu.geometry)
+        INNER JOIN ctu_labeled as ctu ON ST_Intersects (block.geometry, ctu.geometry)
             AND block.ROWID IN (
                 SELECT
                     ROWID
@@ -110,7 +110,6 @@ district_overlap AS (
                 f_table_name = 'blocks_2020'
                 AND search_frame = ctu.geometry))
 SELECT
-    block_id
     district_name,
     sum(p1_001n) AS p1_001n,
     sum("paul vallas") AS vallas,

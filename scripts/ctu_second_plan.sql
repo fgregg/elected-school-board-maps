@@ -94,13 +94,13 @@ block_level_tract AS (
 ),
 district_overlap AS (
     SELECT
-        senate_plan.Name AS district_name,
+        ctu.district AS district_name,
 	p1_001n,
         block.ogc_fid AS block_id,
-        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, senate_plan.geometry)) DESC) AS row_num
+        ROW_NUMBER() OVER (PARTITION BY block.ogc_fid ORDER BY ST_Area (ST_Intersection (block.geometry, ctu.geometry)) DESC) AS row_num
     FROM
         blocks_2020 as block
-        INNER JOIN "20 district map draft 5" AS senate_plan ON ST_Intersects (block.geometry, senate_plan.geometry)
+        INNER JOIN ctu_second_submission as ctu ON ST_Intersects (block.geometry, ctu.geometry)
             AND block.ROWID IN (
                 SELECT
                     ROWID
@@ -108,7 +108,7 @@ district_overlap AS (
                     SpatialIndex
             WHERE
                 f_table_name = 'blocks_2020'
-                AND search_frame = senate_plan.geometry))
+                AND search_frame = ctu.geometry))
 SELECT
     district_name,
     sum(p1_001n) AS p1_001n,
@@ -121,8 +121,7 @@ SELECT
     sum(total_cvap) AS total_cvap,
     sum(white_cvap) / sum(total_cvap) AS percent_white_cvap,
     sum(black_cvap) / sum(total_cvap) AS percent_black_cvap,
-    sum(latino_cvap) / sum(total_cvap) AS percent_latino_cvap,
-    sum(asian_cvap) / sum(total_cvap) AS percent_asian_cvap    
+    sum(latino_cvap) / sum(total_cvap) AS percent_latino_cvap
 FROM
     district_overlap
     INNER JOIN block_level_precinct USING (block_id)
