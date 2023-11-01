@@ -9,8 +9,14 @@ blocks.topojson : input.geojson
 may_17_draft_plan.geojson : raw/may_17_map.kml
 	ogr2ogr -nlt POLYGON -f GeoJSON $@ $< 
 
-may_5_draft_plan.geojson : raw/senate
-	ogr2ogr -nlt POLYGON -f GeoJSON $@ $< 
+may_5_draft_plan.geojson : raw/senate_district_map.kml
+	ogr2ogr -nlt POLYGON -f GeoJSON $@ $<
+
+oct_31_draft_plan.geojson : raw/Chicago\ Elected\ Representative\ School\ Board\ 20\ District\ Map\ 10.31.23.kml
+	ogr2ogr -nlt POLYGON -f GeoJSON $@ "$<"
+
+oct_31_draft_plan.csv : chicago.db
+	spatialite $< < scripts/oct_31_draft_plan.sql > $@	
 
 may_5_draft_plan.csv : chicago.db
 	spatialite $< < scripts/may_5_draft_plan.sql > $@
@@ -54,7 +60,7 @@ cvap_general.csv : chicago.db
 cvap_runoff.csv : chicago.db
 	spatialite $< < scripts/votes_demo_runoff_2023.sql > $@
 
-chicago.db : raw/blocks_2020.geojson public_school_cvap.geojson municipal_general_2023.geojson municipal_runoff_2023.geojson raw/senate_district_map.kml raw/Moderate_20-district_plan_shapefile.shp raw/brottman.kml raw/may_17_map.kml raw/ctu.geojson raw/ctu_second_submission.geojson
+chicago.db : raw/blocks_2020.geojson public_school_cvap.geojson municipal_general_2023.geojson municipal_runoff_2023.geojson raw/senate_district_map.kml raw/Moderate_20-district_plan_shapefile.shp raw/brottman.kml raw/may_17_map.kml raw/ctu.geojson raw/ctu_second_submission.geojson oct_31_draft_plan.geojson
 	ogr2ogr -makevalid -f SQLite -dsco SPATIALITE=YES -t_srs "EPSG:4326" $@ $<
 	for file in $(wordlist 2,$(words $^),$^); do \
             ogr2ogr -makevalid -f SQLite -dsco SPATIALITE=YES -append -t_srs "EPSG:4326" $@ $$file; \
